@@ -1,0 +1,87 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug (ST-Link)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "stlink",
+      "serverpath": "C:/Users/gilgamesh/AppData/Local/stm32cube/bundles/stlink-gdbserver/7.14.0+st.2/bin/ST-LINK_gdbserver.exe",
+      "stm32cubeprogrammer": "C:/Users/gilgamesh/AppData/Local/stm32cube/bundles/programmer/2.23.0/bin",
+      "gdbPath": "C:/Users/gilgamesh/AppData/Local/stm32cube/bundles/gnu-gdb-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gdb.exe",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/Engineer27.elf",
+      "device": "STM32H723VG",
+      "interface": "swd",
+      "svdFile": "C:/Keil_v5/ARM/PACK/Keil/STM32H7xx_DFP/4.1.3/CMSIS/SVD/STM32H723.svd",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "CMake: build (Debug)",
+      "showDevDebugOutput": "none"
+    },
+    {
+      "name": "Debug (DAPLink)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "pyocd",
+      "serverpath": "C:/Users/gilgamesh/AppData/Local/Programs/Python/Python313/Scripts/pyocd.exe",
+      "serverArgs": [
+        "-M",
+        "pre-reset"
+      ],
+      "overrideGDBServerStartedRegex": "GDB server listening on port",
+      "gdbPath": "C:/Users/gilgamesh/AppData/Local/stm32cube/bundles/gnu-gdb-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gdb.exe",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/Engineer27.elf",
+      "targetId": "stm32h723xx",
+      "svdFile": "C:/Keil_v5/ARM/PACK/Keil/STM32H7xx_DFP/4.1.3/CMSIS/SVD/STM32H723.svd",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "CMake: build (Debug)",
+      "showDevDebugOutput": "none",
+      "postLaunchCommands": [
+        "set mem inaccessible-by-default off"
+      ]
+    },
+    {
+      "name": "Debug (DAPLink/OpenOCD)",
+      "type": "cortex-debug",
+      "request": "attach",
+      "servertype": "openocd",
+      "serverpath": "C:/Users/gilgamesh/AppData/Local/xpack-openocd/xpack-openocd-0.12.0-7/bin/openocd.exe",
+      "searchDir": [
+        "C:/Users/gilgamesh/AppData/Local/xpack-openocd/xpack-openocd-0.12.0-7/openocd/scripts"
+      ],
+      "configFiles": [
+        "interface/cmsis-dap.cfg",
+        "target/stm32h7x.cfg"
+      ],
+      "gdbPath": "C:/Users/gilgamesh/AppData/Local/stm32cube/bundles/gnu-gdb-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gdb.exe",
+      "objdumpPath": "C:/Users/gilgamesh/AppData/Local/stm32cube/bundles/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-objdump.exe",
+      "liveWatch": {
+        "enabled": true,
+        "samplesPerSecond": 4
+      },
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/Engineer27.elf",
+      "svdFile": "C:/Keil_v5/ARM/PACK/Keil/STM32H7xx_DFP/4.1.3/CMSIS/SVD/STM32H723.svd",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "DAPLink: flash (OpenOCD)",
+      "showDevDebugOutput": "none"
+    },
+    {
+      "name": "Debug (J-Link)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "jlink",
+      "serverpath": "C:/Program Files/SEGGER/JLink_V982/JLinkGDBServerCL.exe",
+      "gdbPath": "C:/Users/gilgamesh/AppData/Local/stm32cube/bundles/gnu-gdb-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gdb.exe",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/Engineer27.elf",
+      "device": "STM32H723VG",
+      "interface": "swd",
+      "svdFile": "C:/Keil_v5/ARM/PACK/Keil/STM32H7xx_DFP/4.1.3/CMSIS/SVD/STM32H723.svd",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "CMake: build (Debug)",
+      "showDevDebugOutput": "none"
+    }
+  ]
+}

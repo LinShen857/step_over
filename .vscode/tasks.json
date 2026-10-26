@@ -1,0 +1,62 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CMake: build (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${workspaceFolder}/build/Debug"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "DAPLink: flash (Debug)",
+      "type": "shell",
+      "command": "pyocd",
+      "args": [
+        "flash",
+        "-M",
+        "pre-reset",
+        "-t",
+        "stm32h723xx",
+        "${workspaceFolder}/build/Debug/Engineer27.elf"
+      ],
+      "dependsOn": "CMake: build (Debug)",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "DAPLink: flash (OpenOCD)",
+      "type": "shell",
+      "command": "C:/Users/gilgamesh/AppData/Local/xpack-openocd/xpack-openocd-0.12.0-7/bin/openocd.exe",
+      "args": [
+        "-s",
+        "C:/Users/gilgamesh/AppData/Local/xpack-openocd/xpack-openocd-0.12.0-7/openocd/scripts",
+        "-f",
+        "interface/cmsis-dap.cfg",
+        "-f",
+        "target/stm32h7x.cfg",
+        "-c",
+        "program build/Debug/Engineer27.elf verify reset exit"
+      ],
+      "dependsOn": "CMake: build (Debug)",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

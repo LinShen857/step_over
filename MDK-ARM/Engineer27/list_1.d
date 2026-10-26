@@ -1,0 +1,20 @@
+engineer27/list_1.o: \
+  ..\Middlewares\Third_Party\LibXR\src\structure\list.cpp \
+  ..\Middlewares\Third_Party\LibXR\src\structure\list.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\assert\libxr_assert.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\assert\diag.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\libxr_cb.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\libxr_def.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\system\mutex.hpp \
+  ..\Middlewares\Third_Party\LibXR\system\freertos\libxr_system.hpp \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h \
+  ..\Core\Inc\FreeRTOSConfig.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\portable.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\deprecated_definitions.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F\portmacro.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\mpu_wrappers.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\semphr.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\queue.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h

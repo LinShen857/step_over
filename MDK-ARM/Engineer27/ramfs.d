@@ -1,0 +1,27 @@
+engineer27/ramfs.o: \
+  ..\Middlewares\Third_Party\LibXR\src\middleware\ramfs\ramfs.cpp \
+  ..\Middlewares\Third_Party\LibXR\src\middleware\ramfs\ramfs.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\assert\libxr_assert.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\assert\diag.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\libxr_cb.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\libxr_def.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\core\libxr_type.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\structure\rbt.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\system\mutex.hpp \
+  ..\Middlewares\Third_Party\LibXR\system\freertos\libxr_system.hpp \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h \
+  ..\Core\Inc\FreeRTOSConfig.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\portable.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\deprecated_definitions.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F\portmacro.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\mpu_wrappers.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\semphr.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\queue.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\task.h \
+  ..\Middlewares\Third_Party\FreeRTOS\Source\include\list.h \
+  ..\Middlewares\Third_Party\LibXR\src\middleware\ramfs\fs_node.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\middleware\ramfs\file.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\middleware\ramfs\custom.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\middleware\ramfs\dir.hpp \
+  ..\Middlewares\Third_Party\LibXR\src\middleware\ramfs\factory.hpp

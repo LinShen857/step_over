@@ -1,0 +1,82 @@
+generator: 6.0.0
+IWDG:
+  iwdg1:
+    timeout_ms: 1000
+    feed_interval_ms: 250
+Watchdog:
+  run_as_thread: false
+  feed_interval_ms: 250
+terminal_source: ''
+software_timer:
+  priority: 2
+  stack_depth: 1024
+SPI:
+  spi2:
+    tx_buffer_size: 32
+    rx_buffer_size: 32
+    dma_section: '.dma_buffer'
+    dma_enable_min_size: 3
+  spi6:
+    tx_buffer_size: 32
+    rx_buffer_size: 32
+    dma_section: ''
+USART:
+  uart5:
+    # Generator requires a positive value; UART_MODE_RX emits no TX buffer.
+    tx_buffer_size: 1
+    rx_buffer_size: 128
+    dma_section: '.dma_buffer'
+    tx_queue_size: 5
+  usart1:
+    tx_buffer_size: 128
+    rx_buffer_size: 128
+    dma_section: '.dma_buffer'
+    tx_queue_size: 5
+  usart10:
+    tx_buffer_size: 128
+    rx_buffer_size: 128
+    dma_section: '.dma_buffer'
+    tx_queue_size: 5
+  usart2:
+    tx_buffer_size: 128
+    rx_buffer_size: 128
+    dma_section: '.dma_buffer'
+    tx_queue_size: 5
+  usart3:
+    tx_buffer_size: 128
+    rx_buffer_size: 128
+    dma_section: '.dma_buffer'
+    tx_queue_size: 5
+  uart7:
+    tx_buffer_size: 128
+    rx_buffer_size: 128
+    dma_section: '.dma_buffer'
+    tx_queue_size: 5
+ADC:
+  adc1:
+    buffer_size: 32
+    dma_section: '.dma_buffer'
+    vref: 3.3
+  adc3:
+    buffer_size: 32
+    dma_section: '.bdma_buffer'
+    vref: 3.3
+FDCAN:
+  fdcan1:
+    queue_size: 5
+  fdcan2:
+    queue_size: 5
+  fdcan3:
+    queue_size: 5
+USB:
+  usb_otg_hs:
+    enable: false
+Terminal:
+  read_buff_size: 32
+  max_line_size: 32
+  max_arg_number: 5
+  max_history_number: 5
+database:
+  enable: false
+  block_size: auto
+SYSTEM: FreeRTOS
