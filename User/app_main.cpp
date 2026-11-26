@@ -162,10 +162,6 @@ extern "C" void app_main(void)
   
 //达妙电机can设备注册
   static constexpr auto dm_8009p = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
-  static constexpr auto dm_10010l = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
-  static constexpr auto dm_6248p = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
-  static constexpr auto dm_4340p = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
-  static constexpr auto dm_4310p = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
 
   static Motor_DM motor_dm8009p_LF(0x01, 0x11, dm_8009p, fdcan2);
   static Motor_DM motor_dm8009p_RF(0x02, 0x12, dm_8009p, fdcan2);
@@ -185,7 +181,7 @@ extern "C" void app_main(void)
 //腿与撑杆
   motor_dm8009p_LB.SetZeroOffset(2.4840f);
   motor_dm8009p_RB.SetZeroOffset(-1.4511f);
-  motor_dm8009p_LF.SetZeroOffset(-2.16726f);
+  motor_dm8009p_LF.SetZeroOffset(1.17342f);
   motor_dm8009p_RF.SetZeroOffset(2.44856f);
 
   static constexpr mit_cfg_s strut_mit_cfg_lf{0U, 3000U};

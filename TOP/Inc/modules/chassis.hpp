@@ -212,7 +212,11 @@ class Chassis
 			}
 		}
 
-		power_control.Update(ref, speed);
+		const float err[Chassis_N::wheel_num] = {wheel_lf.target_speed - wheel_lf.speed,
+			wheel_rf.target_speed - wheel_rf.speed, wheel_rb.target_speed - wheel_rb.speed,
+			wheel_lb.target_speed - wheel_lb.speed};
+
+		power_control.Update(ref, speed, err);
 
 		wheel_lf.cmd_current = power_control.cmd[0];
 		wheel_rf.cmd_current = power_control.cmd[1];
