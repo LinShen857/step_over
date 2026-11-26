@@ -9,9 +9,9 @@ class PowerMeter : public CanDevice
             explicit PowerMeter(uint32_t host_id_, uint32_t motor_id_)
                 : CanDevice(host_id_, motor_id_) {}
 
-            float voltage;
-            float current;
-            float power;
+            float voltage = 0.f;
+            float current = 0.f;
+            float power = 0.f;
             uint16_t rx_cnt = 0;
 
         void OnClassicFrame(const LibXR::CAN::ClassicPack& frame) override
@@ -27,3 +27,15 @@ class PowerMeter : public CanDevice
             ++rx_cnt;
         }
 };
+
+inline PowerMeter* power_meter_ptr = nullptr;
+
+inline void PowerMeter_Attach(PowerMeter& meter_)
+{
+    power_meter_ptr = &meter_;
+}
+
+inline PowerMeter* PowerMeter_Get()
+{
+    return power_meter_ptr;
+}

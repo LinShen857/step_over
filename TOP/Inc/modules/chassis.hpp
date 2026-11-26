@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "leg.hpp"
+#include "power_control.hpp"
 #include "strut.hpp"
 #include "wheel.hpp"
 
@@ -13,27 +14,49 @@ namespace Chassis_N
 	inline constexpr uint32_t ctrl_freq_hz = 1000;
 	inline constexpr float ctrl_dt = 0.001f;
 	inline constexpr uint8_t lift_per_tick = 2;
-	inline constexpr float wheel_speed_max = 15.f;
+	inline constexpr float wheel_speed_max = 20.f;
+	inline constexpr float strut_rate_max = 4.f;
 }
 
 class Chassis
 {
 	public:
 	Chassis(Wheel& lf_, Wheel& rf_, Wheel& rb_, Wheel& lb_, Leg& leg_lb_, Leg& leg_rb_,
-		Strut& strut_lf_, Strut& strut_rf_)
-		: target_vx(0.f), target_vy(0.f), target_w(0.f), target_struts(0.f), fb_vx(0.f), fb_vy(0.f), fb_w(0.f),
-		last_scale(1.f), wheel_lf(lf_), wheel_rf(rf_), wheel_rb(rb_), wheel_lb(lb_),
-		leg_lb(leg_lb_), leg_rb(leg_rb_), strut_lf(strut_lf_), strut_rf(strut_rf_), lift_index(0)
+		Strut& strut_lf_, Strut& strut_rf_, const PowerControl_N::cfg_s& power_cfg_)
+		: target_vx(0.f), target_vy(0.f), target_w(0.f), target_strut_rate(0.f), fb_vx(0.f), fb_vy(0.f), fb_w(0.f),
+		last_scale(1.f), slip_cut_enable(false), slip_cut_gain(1.f),
+		wheel_lf(lf_), wheel_rf(rf_), wheel_rb(rb_), wheel_lb(lb_),
+		leg_lb(leg_lb_), leg_rb(leg_rb_), strut_lf(strut_lf_), strut_rf(strut_rf_),
+		power_control(power_cfg_), lift_index(0)
 	{}
+
+	void SetSlipCut(const bool enable_)
+	{
+		slip_cut_enable = enable_;
+	}
+
+	void SetSlipCutGain(const float gain_)
+	{
+		slip_cut_gain = ClampNorm(gain_);
+	}
+
+	uint8_t AirborneMask() const
+	{
+		return static_cast<uint8_t>((wheel_lf.airborne ? 1U : 0U) | (wheel_rf.airborne ? 2U : 0U) |
+			(wheel_rb.airborne ? 4U : 0U) | (wheel_lb.airborne ? 8U : 0U));
+	}
 
 	void SetCmdNorm(const float nx_, const float ny_, const float nz_, const float ns_)
 	{
 		target_vx = ClampNorm(nx_) * VMax();
 		target_vy = ClampNorm(ny_) * VMax();
 		target_w = ClampNorm(nz_) * WMax();
-		target_struts = ClampNorm(ns_) * 5.f;
-		strut_lf.target_speed = target_struts;
-		strut_rf.target_speed = target_struts;
+		target_strut_rate = ClampNorm(ns_) * Chassis_N::strut_rate_max;
+	}
+
+	void SetPowerLimit(const float limit_)
+	{
+		power_control.SetLimit(limit_);
 	}
 	float VMax() const { return Chassis_N::wheel_speed_max * wheel_lf.radius; }
 
@@ -123,6 +146,7 @@ class Chassis
 
 	void Update(const float pitch_)
 	{
+		UpdateStrutTarget();
 		UpdateFeedback();
 		CompensateLegMotion(pitch_);
 
@@ -130,6 +154,8 @@ class Chassis
 		wheel_rf.pid.Update(wheel_rf.target_speed, wheel_rf.speed);
 		wheel_rb.pid.Update(wheel_rb.target_speed, wheel_rb.speed);
 		wheel_lb.pid.Update(wheel_lb.target_speed, wheel_lb.speed);
+
+		LimitPower();
 
 		UpdateLift(lift_index);
 		Transmit();
@@ -149,11 +175,13 @@ class Chassis
 	float target_vx;
 	float target_vy;
 	float target_w;
-	float target_struts;
+	float target_strut_rate;
 	float fb_vx;
 	float fb_vy;
 	float fb_w;
 	float last_scale;	
+	bool slip_cut_enable;
+	float slip_cut_gain;
 	Wheel& wheel_lf;
 	Wheel& wheel_rf;
 	Wheel& wheel_rb;
@@ -162,9 +190,42 @@ class Chassis
 	Leg& leg_rb;
 	Strut& strut_lf;
 	Strut& strut_rf;
+	PowerControl power_control;
 
 	private:
 	uint8_t lift_index;
+
+	void LimitPower()
+	{
+		const float speed[Chassis_N::wheel_num] = {wheel_lf.speed, wheel_rf.speed, wheel_rb.speed,
+			wheel_lb.speed};
+		float ref[Chassis_N::wheel_num] = {wheel_lf.pid.output, wheel_rf.pid.output,
+			wheel_rb.pid.output, wheel_lb.pid.output};
+
+		if (slip_cut_enable)
+		{
+			Wheel* wheel[Chassis_N::wheel_num] = {&wheel_lf, &wheel_rf, &wheel_rb, &wheel_lb};
+			for (uint8_t i = 0; i < Chassis_N::wheel_num; ++i)
+			{
+				ref[i] *= 1.f - slip_cut_gain * wheel[i]->slip_score;
+				if (wheel[i]->airborne) wheel[i]->pid.integral *= 0.9f;
+			}
+		}
+
+		power_control.Update(ref, speed);
+
+		wheel_lf.cmd_current = power_control.cmd[0];
+		wheel_rf.cmd_current = power_control.cmd[1];
+		wheel_rb.cmd_current = power_control.cmd[2];
+		wheel_lb.cmd_current = power_control.cmd[3];
+	}
+
+	void UpdateStrutTarget()
+	{
+		const float delta = target_strut_rate * Chassis_N::ctrl_dt;
+		strut_lf.target_pos += delta;
+		strut_rf.target_pos += delta;
+	}
 
 	void UpdateLift(const uint8_t index_)
 	{
@@ -172,11 +233,13 @@ class Chassis
 		switch (index_)
 		{
 			case 0: 
-				strut_lf.pid.Update(strut_lf.target_speed, strut_lf.vel);
+				strut_lf.UpdatePlan(dt);
+				strut_lf.pid.Update(strut_lf.plan_pos, strut_lf.angle_cont);
 				strut_lf.Send(); 
 				break;
 			case 1: 
-				strut_rf.pid.Update(strut_rf.target_speed, strut_rf.vel);
+				strut_rf.UpdatePlan(dt);
+				strut_rf.pid.Update(strut_rf.plan_pos, strut_rf.angle_cont);
 				strut_rf.Send(); 
 				break;
 			case 2:
@@ -197,7 +260,6 @@ class Chassis
 		const float v = vx_ + wheel_.roller_sign * vy_ + w_ * (wheel_.y + wheel_.roller_sign * wheel_.x);
 		wheel_.target_speed = v / wheel_.radius;
 	}
-
 	void LimitWheelTarget()
 	{
 		Wheel* wheel[Chassis_N::wheel_num] = {&wheel_lf, &wheel_rf, &wheel_rb, &wheel_lb};

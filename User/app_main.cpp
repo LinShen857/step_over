@@ -133,28 +133,39 @@ extern "C" void app_main(void)
   Attach(USER_CAN::Bus::CAN1, motor_gm3508_LB);
 
 //轮
-  static constexpr pid_vel_cfg_s wheel_pid_cfg_lf{2.5f, 0.05f, 20.0f, 
+  static constexpr pid_vel_cfg_s wheel_pid_cfg_lf{4.5f, 0.15f, 20.0f, 
       0.005f, 20.0f, 20.0f};
-  static constexpr pid_vel_cfg_s wheel_pid_cfg_rf{2.5f, 0.05f, 20.0f, 
+  static constexpr pid_vel_cfg_s wheel_pid_cfg_rf{4.5f, 0.15f, 20.0f, 
       0.005f, 20.0f, 20.0f};
-  static constexpr pid_vel_cfg_s wheel_pid_cfg_rb{3.0f, 0.05f, 20.0f, 
+  static constexpr pid_vel_cfg_s wheel_pid_cfg_rb{5.5f, 0.15f, 20.0f, 
       0.005f, 20.0f, 20.0f};
-  static constexpr pid_vel_cfg_s wheel_pid_cfg_lb{2.5f, 0.05f, 20.0f, 
+  static constexpr pid_vel_cfg_s wheel_pid_cfg_lb{4.5f, 0.15f, 20.0f, 
       0.005f, 20.0f, 20.0f};
 
   static constexpr lowpass_cfg_s wheel_speed_filter_cfg{0.05f};
 
-  static Wheel wheel_lf(motor_gm3508_LF, 0.3f, 0.22f,-0.045f, 0.075f, wheel_speed_filter_cfg, wheel_pid_cfg_lf);
-  static Wheel wheel_rf(motor_gm3508_RF, 0.3f, -0.22f, -0.045f, 0.075f, wheel_speed_filter_cfg, wheel_pid_cfg_rf);
-  static Wheel wheel_rb(motor_gm3508_RB, -0.13f, -0.26f, -0.045f, 0.075f, wheel_speed_filter_cfg, wheel_pid_cfg_rb);
-  static Wheel wheel_lb(motor_gm3508_LB, -0.13f, 0.26f, -0.045f, 0.075f, wheel_speed_filter_cfg, wheel_pid_cfg_lb);
+  //空转模型（离地实测拟合：J*accel + b*speed + tau*sgn）
+  static constexpr slip_cfg_s wheel_slip_cfg_lf{0.0041f, 0.0029f, 0.047f};
+  static constexpr slip_cfg_s wheel_slip_cfg_rf{0.0038f, 0.0049f, 0.057f};
+  static constexpr slip_cfg_s wheel_slip_cfg_rb{0.0042f, 0.0079f, 0.057f};
+  static constexpr slip_cfg_s wheel_slip_cfg_lb{0.0028f, 0.0088f, 0.047f};
+
+  static Wheel wheel_lf(motor_gm3508_LF, 0.3f, 0.22f,-0.045f, 0.075f, wheel_speed_filter_cfg, wheel_pid_cfg_lf, wheel_slip_cfg_lf);
+  static Wheel wheel_rf(motor_gm3508_RF, 0.3f, -0.22f, -0.045f, 0.075f, wheel_speed_filter_cfg, wheel_pid_cfg_rf, wheel_slip_cfg_rf);
+  static Wheel wheel_rb(motor_gm3508_RB, -0.13f, -0.26f, -0.045f, 0.075f, wheel_speed_filter_cfg, wheel_pid_cfg_rb, wheel_slip_cfg_rb);
+  static Wheel wheel_lb(motor_gm3508_LB, -0.13f, 0.26f, -0.045f, 0.075f, wheel_speed_filter_cfg, wheel_pid_cfg_lb, wheel_slip_cfg_lb);
 
 //功率计
   static PowerMeter power(0, 0x213);
   Attach(USER_CAN::Bus::CAN1, power);
+  PowerMeter_Attach(power);
   
 //达妙电机can设备注册
   static constexpr auto dm_8009p = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
+  static constexpr auto dm_10010l = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
+  static constexpr auto dm_6248p = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
+  static constexpr auto dm_4340p = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
+  static constexpr auto dm_4310p = Motor_DM_N::MakeFactors(3.14159f,  45.0f,  54.0f);
 
   static Motor_DM motor_dm8009p_LF(0x01, 0x11, dm_8009p, fdcan2);
   static Motor_DM motor_dm8009p_RF(0x02, 0x12, dm_8009p, fdcan2);
@@ -174,6 +185,8 @@ extern "C" void app_main(void)
 //腿与撑杆
   motor_dm8009p_LB.SetZeroOffset(2.4840f);
   motor_dm8009p_RB.SetZeroOffset(-1.4511f);
+  motor_dm8009p_LF.SetZeroOffset(-2.16726f);
+  motor_dm8009p_RF.SetZeroOffset(2.44856f);
 
   static constexpr mit_cfg_s strut_mit_cfg_lf{0U, 3000U};
   static constexpr mit_cfg_s strut_mit_cfg_rf{0U, 3000U};
@@ -181,23 +194,33 @@ extern "C" void app_main(void)
   static constexpr mit_cfg_s leg_mit_cfg_rb{0U, 3500U};
   
 
-  static constexpr pid_vel_cfg_s strut_pid_cfg_lf{10.f, 0.3f, 8.f, 0.005f, 20.f, 20.f, 0.002f};
-  static constexpr pid_vel_cfg_s strut_pid_cfg_rf{8.f, 0.3f, 0.f, 0.005f, 20.f, 20.f, 0.002f};
-  static constexpr pid_pos_cfg_s leg_pid_cfg_lb{30.f, 0.f, 12.f, 0.f, 20.f, 7.f, 0.002f};
-  static constexpr pid_pos_cfg_s leg_pid_cfg_rb{30.f, 0.f, 12.f, 0.f, 20.f, 7.f, 0.002f};
+  static constexpr pid_pos_cfg_s strut_pid_cfg_lf{30.f, 0.08f, 800.f, 0.f, 25.f, 7.f, 0.002f};
+  static constexpr pid_pos_cfg_s strut_pid_cfg_rf{30.f, 0.08f, 800.f, 0.f, 25.f, 7.f, 0.002f};
+  static constexpr pid_pos_cfg_s leg_pid_cfg_lb{45.f, 0.f, 12.f, 0.f, 20.f, 
+    7.f, 0.002f};
+  static constexpr pid_pos_cfg_s leg_pid_cfg_rb{45.f, 0.f, 12.f, 0.f, 20.f, 7.f, 0.002f};
 
-  static constexpr Planning_N::planning_cfg_s leg_plan_cfg_lb{6.f, 30.f, 0.02f};
-  static constexpr Planning_N::planning_cfg_s leg_plan_cfg_rb{6.f, 30.f, 0.02f};
+  static constexpr Planning_N::planning_cfg_s leg_plan_cfg_lb{10.f, 35.f, 0.02f};
+  static constexpr Planning_N::planning_cfg_s leg_plan_cfg_rb{10.f, 35.f, 0.02f};
+  static constexpr Planning_N::planning_cfg_s strut_plan_cfg_lf{4.f, 20.f, 0.02f};
+  static constexpr Planning_N::planning_cfg_s strut_plan_cfg_rf{4.f, 20.f, 0.02f};
   
   static Leg leg_lb(motor_dm8009p_LB, 1.f, leg_mit_cfg_lb, leg_pid_cfg_lb, leg_plan_cfg_lb,
       Leg_N::shrink_angle, Leg_N::stretch_angle);
   static Leg leg_rb(motor_dm8009p_RB, -1.f, leg_mit_cfg_rb, leg_pid_cfg_rb, leg_plan_cfg_rb,
       Leg_N::shrink_angle, Leg_N::stretch_angle);
-  static Strut strut_lf(motor_dm8009p_LF, 1.f, 0.3f, 0.22f, 0.f, strut_mit_cfg_lf, strut_pid_cfg_lf);
-  static Strut strut_rf(motor_dm8009p_RF, -1.f, 0.3f, -0.22f, 0.f, strut_mit_cfg_rf, strut_pid_cfg_rf);
+  static Strut strut_lf(motor_dm8009p_LF, 1.f, 0.3f, 0.22f, 0.f, strut_mit_cfg_lf, strut_pid_cfg_lf,
+      strut_plan_cfg_lf);
+  static Strut strut_rf(motor_dm8009p_RF, -1.f, 0.3f, -0.22f, 0.f, strut_mit_cfg_rf, strut_pid_cfg_rf,
+      strut_plan_cfg_rf);
 
 //底盘
-  static Chassis chassis_obj(wheel_lf, wheel_rf, wheel_rb, wheel_lb, leg_lb, leg_rb, strut_lf, strut_rf);
+  static constexpr PowerControl_N::cfg_s chassis_power_cfg{
+      PowerControl_N::gm3508_model, 20.f, {1.f, 1.f, 1.f, 1.f}};
+
+  static Chassis chassis_obj(wheel_lf, wheel_rf, wheel_rb, wheel_lb, leg_lb, leg_rb, strut_lf, strut_rf,
+      chassis_power_cfg);
+  chassis_obj.SetSlipCut(true);
   Chassis_Attach(chassis_obj);
 
 //CAN注册

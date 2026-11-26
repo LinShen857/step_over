@@ -54,14 +54,15 @@ void Stop()
 
 void Release()
 {
-	if (Chassis* chassis = Chassis_Get(); chassis != nullptr)
-	{
-		chassis->leg_lb.Resync();
-		chassis->leg_rb.Resync();
-	}
+	Chassis* chassis = Chassis_Get();
+	if (chassis == nullptr) return;
+	chassis->leg_lb.Resync();
+	chassis->leg_rb.Resync();
 
 	DmOrder(Motor_DM_N::order_byte_e::clear_error);
 	DmOrder(Motor_DM_N::order_byte_e::enable);
+	chassis->strut_lf.ResetPos();
+	chassis->strut_rf.ResetPos();
 	osThreadResume(chassisTaskHandle);
 	osThreadResume(roboarmTaskHandle);
 }

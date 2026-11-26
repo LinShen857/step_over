@@ -15,6 +15,7 @@ inline constexpr float rc_range = 660.f;
 
 bool balance_active = false;
 float balance_pitch_target = 0.f;
+float pitch_initial = 0.f;
 
 float NormStick(const int16_t value_)
 {
@@ -62,13 +63,14 @@ void TaskChassis(void *argument)
 
 			const float pitch = Imu_N::pitch_sign * imu_euler[1];
 
-			if (rc.rc.s2 == USER_DBUS::sw_mid)
+			if (rc.rc.s2 == USER_DBUS::sw_mid || rc.rc.s2 == USER_DBUS::sw_up)
 			{
 				if (!balance_active)
 				{
 					balance_active = true;
-					balance_pitch_target = pitch-0.08f;
+					pitch_initial = pitch;
 				}
+				balance_pitch_target =  rc.rc.s2 == USER_DBUS::sw_mid ? pitch_initial-0.10f : pitch_initial;
 				chassis->leg_lb.target_angle =
 					balance.QBalance(chassis->leg_lb.angle, pitch, balance_pitch_target);
 				chassis->leg_rb.target_angle =

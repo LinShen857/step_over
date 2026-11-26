@@ -101,6 +101,7 @@ class Motor_GM : public CanDevice
 	float GetSpeedRadS() const { return speed_rad_s; }
 	float GetAngleRad() const { return angle_rad; }
 	float GetTorqueNm() const { return torque; }
+	uint16_t GetRxCount() const { return rx_cnt; }
 
 	void SetCmdCurrent(const float current_)
 	{
