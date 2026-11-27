@@ -48,8 +48,7 @@ namespace PowerControl_N
 	inline constexpr cfg_s gm3508_cfg{gm3508_model, 20.f, {1.f, 1.f, 1.f, 1.f}};
 }
 
-/* 两种分配方式，由 PowerControl_N::alloc_mode 选：
-   big_p  —— 低功率消耗时按需求逐轮等比，高功率消耗时向大 P 过渡：每轮先算最小功率 base
+/* big_p  —— 低功率消耗时按需求逐轮等比，高功率消耗时向大 P 过渡：每轮先算最小功率 base
              与可分配增量 demand，权重 = (1-blend)*demand 占比 + blend*误差占比，
              blend 由 ref_total/limit 在 blend_power_low..blend_power_high 间映射（上限 error_weight_max），
              再把 limit-Σbase 按权重注水分配，逐轮用单调分支求根反解电流；

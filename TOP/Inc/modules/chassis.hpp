@@ -16,6 +16,20 @@ namespace Chassis_N
 	inline constexpr uint8_t lift_per_tick = 2;
 	inline constexpr float wheel_speed_max = 20.f;
 	inline constexpr float strut_rate_max = 4.f;
+	inline constexpr float track_err_hi = 1.2f;
+	inline constexpr float track_err_lo = 0.4f;
+	inline constexpr float track_rise_min = 0.4f;
+	inline constexpr float track_peak_lpf = 0.005f;
+	inline constexpr float track_power_ratio = 0.98f;
+	inline constexpr float track_decay = 0.997f;
+	inline constexpr float track_rise = 0.4f;
+	inline constexpr float track_cheap_ratio = 0.80f;
+	inline constexpr float track_active_ratio = 0.05f;
+	inline constexpr float track_cap_ratio = 0.95f;
+	inline constexpr float limit_vx_init = 1.f;
+	inline constexpr float limit_vy_init = 0.42f;
+	inline constexpr float limit_w_init = 1.f;
+	inline constexpr float twist_limit_min = 0.15f;
 }
 
 class Chassis
@@ -24,7 +38,10 @@ class Chassis
 	Chassis(Wheel& lf_, Wheel& rf_, Wheel& rb_, Wheel& lb_, Leg& leg_lb_, Leg& leg_rb_,
 		Strut& strut_lf_, Strut& strut_rf_, const PowerControl_N::cfg_s& power_cfg_)
 		: target_vx(0.f), target_vy(0.f), target_w(0.f), target_strut_rate(0.f), fb_vx(0.f), fb_vy(0.f), fb_w(0.f),
-		last_scale(1.f), slip_cut_enable(false), slip_cut_gain(1.f),
+		cmd_vx(0.f), cmd_vy(0.f), cmd_w(0.f),
+		limit_vx(Chassis_N::limit_vx_init), limit_vy(Chassis_N::limit_vy_init),
+		limit_w(Chassis_N::limit_w_init), speed_peak(0.f),
+		slip_cut_enable(false), slip_cut_gain(1.f),
 		wheel_lf(lf_), wheel_rf(rf_), wheel_rb(rb_), wheel_lb(lb_),
 		leg_lb(leg_lb_), leg_rb(leg_rb_), strut_lf(strut_lf_), strut_rf(strut_rf_),
 		power_control(power_cfg_), lift_index(0)
@@ -48,9 +65,9 @@ class Chassis
 
 	void SetCmdNorm(const float nx_, const float ny_, const float nz_, const float ns_)
 	{
-		target_vx = ClampNorm(nx_) * VMax();
-		target_vy = ClampNorm(ny_) * VMax();
-		target_w = ClampNorm(nz_) * WMax();
+		cmd_vx = ClampNorm(nx_) * VMax();
+		cmd_vy = ClampNorm(ny_) * VMax();
+		cmd_w = ClampNorm(nz_) * WMax();
 		target_strut_rate = ClampNorm(ns_) * Chassis_N::strut_rate_max;
 	}
 
@@ -79,7 +96,6 @@ class Chassis
 		SolveWheel(wheel_rf, target_vx, target_vy, target_w);
 		SolveWheel(wheel_rb, target_vx, target_vy, target_w);
 		SolveWheel(wheel_lb, target_vx, target_vy, target_w);
-		LimitWheelTarget();
 	}
 
 	void SolveForward()
@@ -141,14 +157,13 @@ class Chassis
 		leg_rb.CalcWheelCenter(wheel_rb.x, wheel_rb.z);
 
 		SolveForward();
-		SolveInverse();
 	}
 
 	void Update(const float pitch_)
 	{
 		UpdateStrutTarget();
 		UpdateFeedback();
-		CompensateLegMotion(pitch_);
+		SolveTwist(pitch_);
 
 		wheel_lf.pid.Update(wheel_lf.target_speed, wheel_lf.speed);
 		wheel_rf.pid.Update(wheel_rf.target_speed, wheel_rf.speed);
@@ -179,7 +194,13 @@ class Chassis
 	float fb_vx;
 	float fb_vy;
 	float fb_w;
-	float last_scale;	
+	float cmd_vx;
+	float cmd_vy;
+	float cmd_w;
+	float limit_vx;
+	float limit_vy;
+	float limit_w;
+	float speed_peak;
 	bool slip_cut_enable;
 	float slip_cut_gain;
 	Wheel& wheel_lf;
@@ -222,6 +243,8 @@ class Chassis
 		wheel_rf.cmd_current = power_control.cmd[1];
 		wheel_rb.cmd_current = power_control.cmd[2];
 		wheel_lb.cmd_current = power_control.cmd[3];
+
+		UpdateTrackLimit();
 	}
 
 	void UpdateStrutTarget()
@@ -264,26 +287,31 @@ class Chassis
 		const float v = vx_ + wheel_.roller_sign * vy_ + w_ * (wheel_.y + wheel_.roller_sign * wheel_.x);
 		wheel_.target_speed = v / wheel_.radius;
 	}
-	void LimitWheelTarget()
+	// 机械上限（含腿补偿）约束，返回统一的 twist 比例
+	float TwistScale(const float* comp_) const
 	{
-		Wheel* wheel[Chassis_N::wheel_num] = {&wheel_lf, &wheel_rf, &wheel_rb, &wheel_lb};
-		float speed_max = 0.f;
+		const Wheel* wheel[Chassis_N::wheel_num] = {&wheel_lf, &wheel_rf, &wheel_rb, &wheel_lb};
+		float s_mech = 1.f;
+
 		for (uint8_t i = 0; i < Chassis_N::wheel_num; ++i)
 		{
-			const float speed = wheel[i]->target_speed;
-			const float speed_abs = speed < 0.f ? -speed : speed;
-			if (speed_abs > speed_max) speed_max = speed_abs;
-		}
+			const float w = wheel[i]->target_speed;
+			const float c = comp_[i];
 
-		last_scale = 1.f;
-		if (speed_max > Chassis_N::wheel_speed_max && speed_max > 0.f)
-		{
-			last_scale = Chassis_N::wheel_speed_max / speed_max;
-			for (uint8_t i = 0; i < Chassis_N::wheel_num; ++i)
+			if (w > 0.f)
 			{
-				wheel[i]->target_speed *= last_scale;
+				const float bound = (Chassis_N::wheel_speed_max - c) / w;
+				if (bound < s_mech) s_mech = bound;
+			}
+			else if (w < 0.f)
+			{
+				const float bound = (Chassis_N::wheel_speed_max + c) / -w;
+				if (bound < s_mech) s_mech = bound;
 			}
 		}
+
+		if (s_mech > 1.f) s_mech = 1.f;
+		return s_mech > 0.f ? s_mech : 0.f;
 	}
 
 	static float ClampNorm(const float value_)
@@ -291,22 +319,91 @@ class Chassis
 		return value_ > 1.f ? 1.f : (value_ < -1.f ? -1.f : value_);
 	}
 
-	void CompensateLegMotion(const float pitch_)
+	// 腿补偿 + twist 统一缩放：不可达一律表现为整体变慢，不破坏运动学模式
+	void SolveTwist(const float pitch_)
 	{
-		CompensateWheel(wheel_rb, leg_rb, pitch_);
-		CompensateWheel(wheel_lb, leg_lb, pitch_);
+		float comp[Chassis_N::wheel_num] {};
+		comp[2] = LegComp(leg_rb, wheel_rb, pitch_);
+		comp[3] = LegComp(leg_lb, wheel_lb, pitch_);
+
+		target_vx = cmd_vx * limit_vx;
+		target_vy = cmd_vy * limit_vy;
+		target_w = cmd_w * limit_w;
+		SolveInverse();
+
+		const float scale = TwistScale(comp);
+		if (scale < 1.f)
+		{
+			target_vx *= scale;
+			target_vy *= scale;
+			target_w *= scale;
+			SolveInverse();
+		}
+
+		wheel_rb.target_speed += comp[2];
+		wheel_lb.target_speed += comp[3];
 	}
 
-	static void CompensateWheel(Wheel& wheel_, const Leg& leg_, const float pitch_)
+	static float LegComp(const Leg& leg_, const Wheel& wheel_, const float pitch_)
 	{
 		const float v = Leg_N::orbit_radius * leg_.vel * cosf(leg_.angle + pitch_);
-		wheel_.target_speed = ClampAbs(wheel_.target_speed + v / wheel_.radius,
-			Chassis_N::wheel_speed_max);
+		return v / wheel_.radius;
 	}
 
-	static float ClampAbs(const float value_, const float limit_)
+	// 每轴独立：追不上且已停涨→只收缩在用的轴；顶到上限、跟得上且功率有富余→缓慢放开
+	void UpdateTrackLimit()
 	{
-		return value_ > limit_ ? limit_ : (value_ < -limit_ ? -limit_ : value_);
+		const Wheel* wheel[Chassis_N::wheel_num] = {&wheel_lf, &wheel_rf, &wheel_rb, &wheel_lb};
+		float deficit = 0.f;
+		float speed_max = 0.f;
+
+		for (uint8_t i = 0; i < Chassis_N::wheel_num; ++i)
+		{
+			const float t = wheel[i]->target_speed;
+			const float s = wheel[i]->speed;
+			const float t_abs = t < 0.f ? -t : t;
+			const float s_abs = s < 0.f ? -s : s;
+
+			if (t_abs - s_abs > deficit) deficit = t_abs - s_abs;
+			if (s_abs > speed_max) speed_max = s_abs;
+		}
+
+		const float rise = speed_max - speed_peak;
+		speed_peak += (speed_max - speed_peak) * Chassis_N::track_peak_lpf;
+
+		const float budget = power_control.budget;
+		const float power = power_control.power_total;
+		const float v_active = VMax() * Chassis_N::track_active_ratio;
+		const float w_active = WMax() * Chassis_N::track_active_ratio;
+		const float step = Chassis_N::track_rise * Chassis_N::ctrl_dt;
+
+		if (power >= budget * Chassis_N::track_power_ratio && deficit > Chassis_N::track_err_hi &&
+			rise < Chassis_N::track_rise_min)
+		{
+			if (Abs(cmd_vx) > v_active) limit_vx *= Chassis_N::track_decay;
+			if (Abs(cmd_vy) > v_active) limit_vy *= Chassis_N::track_decay;
+			if (Abs(cmd_w) > w_active) limit_w *= Chassis_N::track_decay;
+		}
+		else if (deficit < Chassis_N::track_err_lo && power < budget * Chassis_N::track_cheap_ratio)
+		{
+			if (Abs(cmd_vx) > VMax() * Chassis_N::track_cap_ratio) limit_vx += step;
+			if (Abs(cmd_vy) > VMax() * Chassis_N::track_cap_ratio) limit_vy += step;
+			if (Abs(cmd_w) > WMax() * Chassis_N::track_cap_ratio) limit_w += step;
+		}
+
+		limit_vx = ClampLimit(limit_vx);
+		limit_vy = ClampLimit(limit_vy);
+		limit_w = ClampLimit(limit_w);
+	}
+
+	static float ClampLimit(const float value_)
+	{
+		return value_ > 1.f ? 1.f : (value_ < Chassis_N::twist_limit_min ? Chassis_N::twist_limit_min : value_);
+	}
+
+	static float Abs(const float value_)
+	{
+		return value_ < 0.f ? -value_ : value_;
 	}
 
 	static float Det3(const float m_[3][3])
